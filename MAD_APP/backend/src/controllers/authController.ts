@@ -15,10 +15,10 @@ export const register = async (req: Request, res: Response) => {
 
 // Login User
 export const login = async (req: Request, res: Response) => {
-  const { email, password } = req.body;
+  const { name, password } = req.body;
 
   try {
-    const token = await loginUser(email, password);
+    const token = await loginUser(name, password);
     res.status(200).json({ token });
   } catch (error: any) {
     res.status(400).json({ message: error.message });

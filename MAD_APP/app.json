@@ -4,11 +4,11 @@
     "slug": "MAD_APP",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/logo-udemy.png",
+    "icon": "./assets/app-logo.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/logo-udemy.png",
+      "image": "./assets/app-logo.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },

@@ -12,6 +12,13 @@ import {
   Platform,
   ScrollView,
 } from "react-native";
+import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+interface RegisterResponse {
+  message: string;
+  token?: string; // Optional token field
+}
 
 const SignUp: React.FC<any> = ({ navigation }) => {
   const [name, setName] = useState("");
@@ -19,30 +26,53 @@ const SignUp: React.FC<any> = ({ navigation }) => {
   const [password, setPassword] = useState("");
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
 
-  const handleSignUp = () => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; // Regex for basic email validation
-    
+  const handleSignUp = async () => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    // Validate inputs
     if (name.trim() === "") {
       Alert.alert("Invalid Name", "Name cannot be empty.");
     } else if (!emailRegex.test(email)) {
       Alert.alert("Invalid Email", "Please enter a valid email address.");
     } else if (password.length < 6) {
-      Alert.alert(
-        "Invalid Password",
-        "Password must be at least 6 characters long."
-      );
+      Alert.alert("Invalid Password", "Password must be at least 6 characters long.");
     } else {
-      Alert.alert("Success", "Account created successfully!");
-      navigation.navigate("SignIn");
+      try {
+        // Send the registration request
+        const response = await axios.post<RegisterResponse>(
+          "http://192.168.1.13:5000/api/auth/register", // Use the appropriate URL
+          {
+            name: name, // Include username in the request
+            email: email,   // Include email in the request
+            password: password,
+          }
+        );
+
+        if (response.status === 201) {
+          Alert.alert("Registration Successful", "Account created successfully");
+
+          // Store the token if present
+          if (response.data.token) {
+            await AsyncStorage.setItem("authToken", response.data.token);
+          }
+
+          navigation.navigate("SignIn"); // Navigate to the Sign In screen
+        }
+      } catch (error: any) {
+        console.error("Registration Error:", error.message);
+        Alert.alert(
+          "Registration Failed",
+          error.response?.data?.message || "Something went wrong. Please try again."
+        );
+      }
     }
   };
-  
 
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0} // Adjust as needed
+      keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
     >
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <SafeAreaView style={styles.innerContainer}>
@@ -56,9 +86,7 @@ const SignUp: React.FC<any> = ({ navigation }) => {
           </View>
           <View style={styles.header}>
             <Text style={styles.headerTitle}>Sign Up</Text>
-            <Text style={styles.headerSubtitle}>
-              Enter your credentials to continue
-            </Text>
+            <Text style={styles.headerSubtitle}>Enter your credentials to continue</Text>
           </View>
           <View style={styles.form}>
             <View>
@@ -129,7 +157,6 @@ const SignUp: React.FC<any> = ({ navigation }) => {
               <Text style={styles.signInText}>Sign In</Text>
             </TouchableOpacity>
           </View>
-
         </SafeAreaView>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -149,7 +176,7 @@ const styles = StyleSheet.create({
   },
   imageContainer: {
     width: "100%",
-    height:250,
+    height: 250,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -164,7 +191,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "bold",
     paddingVertical: 2,
-    color:"#333333"
+    color: "#333333",
   },
   headerSubtitle: {
     fontSize: 14,
@@ -190,7 +217,7 @@ const styles = StyleSheet.create({
     textDecorationLine: "none",
   },
   inputFocused: {
-    borderColor: "#000000", 
+    borderColor: "#000000",
   },
   termsContainer: {
     marginVertical: 20,
@@ -198,7 +225,6 @@ const styles = StyleSheet.create({
   termsText: {
     fontSize: 12,
     color: "#606060",
-    // textAlign: "center",
   },
   button: {
     backgroundColor: "#007BFF",
@@ -218,15 +244,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     padding: 2.5,
-  }, 
+  },
   alreadyAccountContainer: {
-    flexDirection: 'row', 
-    justifyContent: "center", 
-    marginTop: 10, 
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: 10,
   },
   alreadyAccountText: {
     color: "#606060",
-    marginRight: 5, 
+    marginRight: 5,
   },
   signInText: {
     color: "#007BFF",

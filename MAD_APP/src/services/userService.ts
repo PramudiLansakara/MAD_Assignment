@@ -1,10 +1,12 @@
-const API_URL = 'http://localhost:5000/api/auth'; 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+const API_URL = 'http://192.168.1.13:5000/api/auth';
+
 interface ApiResponse {
   token: string;
 }
 
-// Register User
-export const registerUser = async (name: string, email: string, password: string) => {
+
+export const registerUser = async (name: string, email: string, password: string): Promise<string> => {
   try {
     const response = await fetch(`${API_URL}/register`, {
       method: 'POST',
@@ -16,37 +18,34 @@ export const registerUser = async (name: string, email: string, password: string
 
     if (!response.ok) {
       const errorData = await response.json();
-      return errorData.message || 'An error occurred';
+      throw new Error(errorData.message || 'An error occurred');
     }
 
     const data: ApiResponse = await response.json();
     return data.token;
-
   } catch (error) {
-    return 'An unexpected error occurred';
+    if (error instanceof Error) {
+      throw new Error(error.message || 'An unexpected error occurred');
+    } else {
+      throw new Error('An unexpected error occurred');
+    }
   }
 };
 
 // Login User
-export const loginUser = async (email: string, password: string) => {
-  try {
-    const response = await fetch(`${API_URL}/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email, password }),
-    });
+export const loginuser = async (email: string, password: string) => {
+  const response = await fetch("http://192.168.1.13:5000/api/auth/login", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ email, password }),
+  });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      return errorData.message || 'An error occurred';
-    }
-
-    const data: ApiResponse = await response.json();
-    return data.token;
-
-  } catch (error) {
-    return 'An unexpected error occurred';
+  if (!response.ok) {
+    throw new Error("Failed to sign in. Please check your credentials.");
   }
+
+  const data = await response.json();
+  return data; // Assuming the data contains token and possibly other information
 };

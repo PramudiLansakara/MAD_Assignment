@@ -12,23 +12,44 @@ import {
   Platform,
   ScrollView,
 } from "react-native";
+import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const SignIn: React.FC<any> = ({ navigation }) => {
-  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
 
-  const handleSignIn = () => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; // Regex for basic email validation
-    
-    if (!emailRegex.test(email)) {
-      Alert.alert("Invalid Email", "Please enter a valid email address.");
+  interface LoginResponse {
+    token: string;
+  }
+
+  const handleSignIn = async () => {
+    if (name.trim() === "") {
+      Alert.alert("Invalid Name", "Name cannot be empty.");
     } else if (password.length < 6) {
       Alert.alert("Invalid Password", "Password must be at least 6 characters long.");
     } else {
-      Alert.alert("Success", "Signed in successfully!");
-      // Navigate to the next screen, if any, after successful sign-in
-      navigation.navigate("Home");
+      try {
+        const response = await axios.post<LoginResponse>("http://192.168.1.13:5000/api/auth/login", {
+          name: name,
+          password: password,
+        });
+  
+        if (response.status === 200) {
+          const { token } = response.data;
+          await AsyncStorage.setItem("userToken", token);
+          await AsyncStorage.setItem("username", name);  // Store username here
+          Alert.alert("Success", "Signed in successfully!");
+          navigation.navigate("Home", { username: name });
+        }
+      } catch (error) {
+        console.error(error);
+        Alert.alert(
+          "Login Failed",
+          error.response?.data?.message || "Please check your username and password."
+        );
+      }
     }
   };
   
@@ -55,17 +76,14 @@ const SignIn: React.FC<any> = ({ navigation }) => {
           </View>
           <View style={styles.form}>
             <View>
-              <Text style={styles.title}>Email</Text>
+              <Text style={styles.title}>Username</Text>
               <TextInput
-                placeholder="example@gmail.com"
-                value={email}
-                onChangeText={setEmail}
-                onFocus={() => setFocusedInput("email")}
+                placeholder="John Doe"
+                value={name}
+                onChangeText={setName}
+                onFocus={() => setFocusedInput("name")}
                 onBlur={() => setFocusedInput(null)}
-                style={[
-                  styles.input,
-                  focusedInput === "email" && styles.inputFocused,
-                ]}
+                style={[styles.input, focusedInput === "name" && styles.inputFocused]}
                 placeholderTextColor="#B0B0B0"
               />
             </View>
@@ -79,10 +97,7 @@ const SignIn: React.FC<any> = ({ navigation }) => {
                 secureTextEntry
                 onFocus={() => setFocusedInput("password")}
                 onBlur={() => setFocusedInput(null)}
-                style={[
-                  styles.input,
-                  focusedInput === "password" && styles.inputFocused,
-                ]}
+                style={[styles.input, focusedInput === "password" && styles.inputFocused]}
                 placeholderTextColor="#B0B0B0"
               />
             </View>
@@ -134,7 +149,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "bold",
     paddingVertical: 2,
-    color:"#333333"
+    color: "#333333",
   },
   headerSubtitle: {
     fontSize: 14,
@@ -180,7 +195,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     padding: 2.5,
-  },  
+  },
   alreadyAccountContainer: {
     flexDirection: "row",
     justifyContent: "center",

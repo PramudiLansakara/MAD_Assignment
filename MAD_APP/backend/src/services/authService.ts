@@ -1,7 +1,7 @@
 import User, { IUser } from '../models/User';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET as string;
+const JWT_SECRET = "secretkey";
 
 // Register a new user
 export const registerUser = async (name: string, email: string, password: string): Promise<string> => {
@@ -18,8 +18,8 @@ export const registerUser = async (name: string, email: string, password: string
 };
 
 // Login an existing user
-export const loginUser = async (email: string, password: string): Promise<string> => {
-  const user = await User.findOne({ email });
+export const loginUser = async (name: string, password: string): Promise<string> => {
+  const user = await User.findOne({ name });
   if (!user) {
     throw new Error('User not found');
   }
