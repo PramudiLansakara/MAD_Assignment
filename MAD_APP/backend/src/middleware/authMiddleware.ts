@@ -7,7 +7,7 @@ export const protect = (req: Request, res: Response, next: NextFunction) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as { id: string };
-    req.user = decoded.id; // Now TypeScript recognizes `req.user`
+    req.user = decoded.id; 
     next();
   } catch (error) {
     res.status(401).json({ message: 'Token verification failed' });

@@ -19,40 +19,45 @@ const SignIn: React.FC<any> = ({ navigation }) => {
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
+  const [errors, setErrors] = useState<{ name?: string; password?: string }>({});
 
-  interface LoginResponse {
-    token: string;
-  }
+  const validateFields = () => {
+    const newErrors: { name?: string; password?: string } = {};
+
+    if (name.trim() === "") {
+      newErrors.name = "Name cannot be empty.";
+    }
+
+    if (password.length < 6) {
+      newErrors.password = "Password must be at least 6 characters long.";
+    }
+
+    setErrors(newErrors);
+
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleSignIn = async () => {
-    if (name.trim() === "") {
-      Alert.alert("Invalid Name", "Name cannot be empty.");
-    } else if (password.length < 6) {
-      Alert.alert("Invalid Password", "Password must be at least 6 characters long.");
-    } else {
-      try {
-        const response = await axios.post<LoginResponse>("http://192.168.1.13:5000/api/auth/login", {
-          name: name,
-          password: password,
-        });
-  
-        if (response.status === 200) {
-          const { token } = response.data;
-          await AsyncStorage.setItem("userToken", token);
-          await AsyncStorage.setItem("username", name);  // Store username here
-          Alert.alert("Success", "Signed in successfully!");
-          navigation.navigate("Home", { username: name });
-        }
-      } catch (error) {
-        console.error(error);
-        Alert.alert(
-          "Login Failed",
-          error.response?.data?.message || "Please check your username and password."
-        );
+    if (!validateFields()) return;
+
+    try {
+      const response = await axios.post<{ token: string }>("http://192.168.1.13:5000/api/auth/login", {
+        name: name,
+        password: password,
+      });
+
+      if (response.status === 200) {
+        const { token } = response.data;
+        await AsyncStorage.setItem("userToken", token);
+        await AsyncStorage.setItem("username", name);
+        Alert.alert("Success", "Signed in successfully!");
+        navigation.navigate("Home", { username: name });
       }
+    } catch (error) {
+      console.error(error);
+      Alert.alert("Login Failed", "Please check your username and password.");
     }
   };
-  
 
   return (
     <KeyboardAvoidingView
@@ -80,12 +85,18 @@ const SignIn: React.FC<any> = ({ navigation }) => {
               <TextInput
                 placeholder="John Doe"
                 value={name}
-                onChangeText={setName}
+                onChangeText={(text) => {
+                  setName(text);
+                  if (errors.name) {
+                    setErrors((prevErrors) => ({ ...prevErrors, name: undefined }));
+                  }
+                }}
                 onFocus={() => setFocusedInput("name")}
                 onBlur={() => setFocusedInput(null)}
                 style={[styles.input, focusedInput === "name" && styles.inputFocused]}
                 placeholderTextColor="#B0B0B0"
               />
+              {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
             </View>
 
             <View style={styles.fields}>
@@ -93,13 +104,19 @@ const SignIn: React.FC<any> = ({ navigation }) => {
               <TextInput
                 placeholder="******"
                 value={password}
-                onChangeText={setPassword}
+                onChangeText={(text) => {
+                  setPassword(text);
+                  if (errors.password) {
+                    setErrors((prevErrors) => ({ ...prevErrors, password: undefined }));
+                  }
+                }}
                 secureTextEntry
                 onFocus={() => setFocusedInput("password")}
                 onBlur={() => setFocusedInput(null)}
                 style={[styles.input, focusedInput === "password" && styles.inputFocused]}
                 placeholderTextColor="#B0B0B0"
               />
+              {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
             </View>
           </View>
 
@@ -176,6 +193,11 @@ const styles = StyleSheet.create({
   },
   inputFocused: {
     borderColor: "#000000",
+  },
+  errorText: {
+    color: "red",
+    fontSize: 12,
+    marginTop: 5,
   },
   button: {
     backgroundColor: "#007BFF",

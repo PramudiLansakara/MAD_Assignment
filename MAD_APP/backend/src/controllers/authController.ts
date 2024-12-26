@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { registerUser, loginUser } from '../services/authService';
 
 // Register User
@@ -14,7 +14,7 @@ export const register = async (req: Request, res: Response) => {
 };
 
 // Login User
-export const login = async (req: Request, res: Response) => {
+export const login = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const { name, password } = req.body;
 
   try {
@@ -23,4 +23,5 @@ export const login = async (req: Request, res: Response) => {
   } catch (error: any) {
     res.status(400).json({ message: error.message });
   }
+  next();
 };

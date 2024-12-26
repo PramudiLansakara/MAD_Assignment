@@ -1,25 +1,28 @@
-import React, { useState, useEffect, createContext, useContext } from 'react';
+import React, { useState, useEffect, createContext, useContext } from "react";
 import {
   View,
   Text,
   Image,
   FlatList,
   TouchableOpacity,
+  TextInput,
   StyleSheet,
   Alert,
-} from 'react-native';
+} from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useNavigation } from '@react-navigation/native';  // Import useNavigation for navigation
+import { useNavigation } from "@react-navigation/native";
 
-// Create a Context for managing the click count
 const ClickContext = createContext({ clickCount: 0, incrementClickCount: () => {} });
 
 const HomeScreen = ({ username }: { username: string | null }) => {
-  const [courses, setCourses] = useState([]);
+  const [courses, setCourses] = useState<{ id: string; pic: string; title: string; category: string; rating: number; desc_text: string }[]>([]);
   const [expanded, setExpanded] = useState<{ [key: string]: boolean }>({});
   const [isDropdownVisible, setDropdownVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filteredCourses, setFilteredCourses] = useState<{ id: string; pic: string; title: string; category: string; rating: number; desc_text: string }[]>([]);
+  const [predictedCategories, setPredictedCategories] = useState<string[]>([]);
   const { clickCount, incrementClickCount } = useContext(ClickContext);
-  const navigation = useNavigation();  // Hook to handle navigation
+  const navigation = useNavigation();
 
   const url = 'https://paid-udemy-course-for-free.p.rapidapi.com/search?s=a';
   const options = {
@@ -35,7 +38,8 @@ const HomeScreen = ({ username }: { username: string | null }) => {
       try {
         const response = await fetch(url, options);
         const data = await response.json();
-        setCourses(data); // Assuming the API returns an array of courses
+        setCourses(data);
+        setFilteredCourses(data);
       } catch (error) {
         console.error(error);
       }
@@ -52,28 +56,74 @@ const HomeScreen = ({ username }: { username: string | null }) => {
     const stars = [];
     for (let i = 0; i < 5; i++) {
       stars.push(
-        <Text key={i} style={{ color: i < rating ? 'gold' : 'gray' }}>★</Text>
+        <Text key={i} style={{ color: i < rating ? "gold" : "gray" }}>
+          ★
+        </Text>
       );
     }
     return stars;
   };
 
-  const renderCourse = ({ item }: { item: { id: string; pic: string; title: string; category: string; rating: number; desc_text: string } }) => {
+  const handleSearch = (text: string) => {
+    setSearchQuery(text);
+  
+    if (!text.trim()) {
+      // Clear predictions and filtered courses when the search is empty
+      setPredictedCategories([]);
+      setFilteredCourses(courses);
+      return;
+    }
+  
+    const categories = courses
+      .map((course) => course.category.toLowerCase())
+      .filter((category, index, array) => array.indexOf(category) === index);
+  
+    const predictions = categories.filter((category) =>
+      category.startsWith(text.toLowerCase())
+    );
+  
+    setPredictedCategories(predictions);
+  
+    const filtered = courses.filter((course) =>
+      course.category.toLowerCase().includes(text.toLowerCase())
+    );
+  
+    setFilteredCourses(filtered);
+  };
+  
+
+  const renderPredictedCategory = ({ item }: { item: string }) => (
+    <TouchableOpacity
+      onPress={() => {
+        setSearchQuery(item);
+        handleSearch(item);
+        setPredictedCategories([]);
+      }}
+    >
+      <Text style={styles.predictedCategory}>{item}</Text>
+    </TouchableOpacity>
+  );
+
+  const renderCourse = ({
+    item,
+  }: {
+    item: { id: string; pic: string; title: string; category: string; rating: number; desc_text: string };
+  }) => {
     const isExpanded = expanded[item.id];
-    const shortDescription = item.desc_text.slice(0, 100) + '...';
+    const shortDescription = item.desc_text.slice(0, 100) + "...";
 
     return (
       <View style={styles.courseContainer}>
         <Image source={{ uri: item.pic }} style={styles.courseImage} />
         <Text style={styles.courseTitle}>{item.title}</Text>
         <Text style={styles.courseCategory}>{item.category}</Text>
-        <View style={{ flexDirection: 'row' }}>{renderStars(item.rating)}</View>
+        <View style={{ flexDirection: "row" }}>{renderStars(item.rating)}</View>
         <Text style={styles.courseDescription}>
           {isExpanded ? item.desc_text : shortDescription}
         </Text>
         <TouchableOpacity onPress={() => toggleExpand(item.id)}>
-          <Text style={{ color: '#007bff' }}>
-            {isExpanded ? 'Read Less' : 'Read More'}
+          <Text style={{ color: "#007bff" }}>
+            {isExpanded ? "Read Less" : "Read More"}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -99,11 +149,10 @@ const HomeScreen = ({ username }: { username: string | null }) => {
           text: "OK",
           onPress: async () => {
             try {
-              // Clear AsyncStorage and navigate to SignIn page
-              await AsyncStorage.removeItem('username');
-              navigation.navigate('SignIn');  // Navigate to the SignIn page (make sure 'SignIn' is defined in your navigator)
+              await AsyncStorage.removeItem("username");
+              navigation.navigate("SignIn");
             } catch (error) {
-              console.error('Error logging out:', error);
+              console.error("Error logging out:", error);
             }
           },
         },
@@ -140,15 +189,37 @@ const HomeScreen = ({ username }: { username: string | null }) => {
         )}
       </View>
 
-      {courses.length > 0 ? (
+      <TextInput
+        style={styles.searchBar}
+        placeholder="Search by category..."
+        value={searchQuery}
+        onChangeText={handleSearch}
+      />
+
+      {predictedCategories.length > 0 && (
         <FlatList
-          data={courses}
+          data={predictedCategories}
+          keyExtractor={(item, index) => index.toString()}
+          renderItem={renderPredictedCategory}
+          style={styles.predictionsList}
+        />
+      )}
+
+{/* {predictedCategories.length === 0 && searchQuery.trim() !== "" && (
+  <Text style={{ color: "gray", marginVertical: 5 }}>No matching categories</Text>
+)}
+ */}
+
+
+      {filteredCourses.length > 0 ? (
+        <FlatList
+          data={filteredCourses}
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderCourse}
         />
       ) : (
         <View style={styles.center}>
-          <Text>Loading...</Text>
+          <Text>No courses found</Text>
         </View>
       )}
 
@@ -159,7 +230,6 @@ const HomeScreen = ({ username }: { username: string | null }) => {
   );
 };
 
-// App Component with Context Provider
 const App = () => {
   const [clickCount, setClickCount] = useState(0);
   const [username, setUsername] = useState<string | null>(null);
@@ -168,16 +238,15 @@ const App = () => {
     setClickCount((prev) => prev + 1);
   };
 
-  // Simulate fetching username (you can replace this with actual sign-in logic)
   useEffect(() => {
     const getUsername = async () => {
       try {
-        const storedUsername = await AsyncStorage.getItem('username');
+        const storedUsername = await AsyncStorage.getItem("username");
         if (storedUsername) {
           setUsername(storedUsername);
         }
       } catch (error) {
-        console.error('Error retrieving username:', error);
+        console.error("Error retrieving username:", error);
       }
     };
     getUsername();
@@ -190,46 +259,45 @@ const App = () => {
   );
 };
 
-// Styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 10,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    width: '100%',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    width: "100%",
     paddingRight: 10,
     marginBottom: 10,
   },
   profileContainer: {
-    position: 'relative',
-    flexDirection: 'row', // Align profile circle with the text
-    alignItems: 'center',
+    position: "relative",
+    flexDirection: "row",
+    alignItems: "center",
   },
   profileCircle: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#007bff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 10, // Space between the "Hi" message and profile circle
+    backgroundColor: "#007bff",
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 10,
   },
   profileText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   dropdown: {
-    position: 'absolute',
+    position: "absolute",
     top: 45,
     right: 0,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 5,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOpacity: 0.1,
     shadowRadius: 5,
     width: 100,
@@ -238,74 +306,94 @@ const styles = StyleSheet.create({
   dropdownItem: {
     padding: 10,
     fontSize: 14,
-    color: '#333',
+    color: "#333",
   },
   welcomeText: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   courseContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 8,
     marginBottom: 20,
     padding: 10,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOpacity: 0.2,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
   },
   courseImage: {
-    width: '100%',
+    width: "100%",
     height: 200,
     borderRadius: 8,
     marginBottom: 10,
   },
   courseTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 5,
   },
   courseCategory: {
     fontSize: 14,
-    color: 'gray',
+    color: "gray",
     marginBottom: 5,
   },
   courseDescription: {
     fontSize: 12,
-    color: 'gray',
+    color: "gray",
     marginBottom: 10,
   },
   linkButton: {
-    backgroundColor: '#007bff',
+    backgroundColor: "#007bff",
     paddingVertical: 10,
     borderRadius: 5,
-    alignItems: 'center',
+    alignItems: "center",
   },
   linkText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 14,
   },
   floatingButton: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 20,
     right: 20,
-    backgroundColor: '#007bff',
+    backgroundColor: "#007bff",
     padding: 15,
     borderRadius: 30,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOpacity: 0.2,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
   },
   floatingButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 14,
-    fontWeight: 'bold',
+    fontWeight: "bold",
+  },
+  searchBar: {
+    height: 40,
+    borderColor: "#ccc",
+    borderWidth: 1,
+    borderRadius: 5,
+    paddingHorizontal: 10,
+    marginBottom: 10,
+  },
+  predictionsList: {
+    backgroundColor: "#fff",
+    borderColor: "#ccc",
+    borderWidth: 1,
+    borderRadius: 5,
+    marginBottom: 10,
+  },
+  predictedCategory: {
+    padding: 10,
+    borderBottomColor: "#ccc",
+    borderBottomWidth: 1,
   },
   center: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
 

@@ -17,7 +17,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface RegisterResponse {
   message: string;
-  token?: string; // Optional token field
+  token?: string;
 }
 
 const SignUp: React.FC<any> = ({ navigation }) => {
@@ -25,46 +25,54 @@ const SignUp: React.FC<any> = ({ navigation }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
+  const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string }>({});
+
+  const validateFields = () => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const newErrors: { name?: string; email?: string; password?: string } = {};
+
+    if (name.trim() === "") {
+      newErrors.name = "Name cannot be empty.";
+    }
+    if (!emailRegex.test(email)) {
+      newErrors.email = "Please enter a valid email address.";
+    }
+    if (password.length < 6) {
+      newErrors.password = "Password must be at least 6 characters long.";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleSignUp = async () => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!validateFields()) return;
 
-    // Validate inputs
-    if (name.trim() === "") {
-      Alert.alert("Invalid Name", "Name cannot be empty.");
-    } else if (!emailRegex.test(email)) {
-      Alert.alert("Invalid Email", "Please enter a valid email address.");
-    } else if (password.length < 6) {
-      Alert.alert("Invalid Password", "Password must be at least 6 characters long.");
-    } else {
-      try {
-        // Send the registration request
-        const response = await axios.post<RegisterResponse>(
-          "http://192.168.1.13:5000/api/auth/register", // Use the appropriate URL
-          {
-            name: name, // Include username in the request
-            email: email,   // Include email in the request
-            password: password,
-          }
-        );
-
-        if (response.status === 201) {
-          Alert.alert("Registration Successful", "Account created successfully");
-
-          // Store the token if present
-          if (response.data.token) {
-            await AsyncStorage.setItem("authToken", response.data.token);
-          }
-
-          navigation.navigate("SignIn"); // Navigate to the Sign In screen
+    try {
+      const response = await axios.post<RegisterResponse>(
+        "http://192.168.1.13:5000/api/auth/register",
+        {
+          name: name,
+          email: email,
+          password: password,
         }
-      } catch (error: any) {
-        console.error("Registration Error:", error.message);
-        Alert.alert(
-          "Registration Failed",
-          error.response?.data?.message || "Something went wrong. Please try again."
-        );
+      );
+
+      if (response.status === 201) {
+        Alert.alert("Registration Successful", "Account created successfully");
+
+        if (response.data.token) {
+          await AsyncStorage.setItem("authToken", response.data.token);
+        }
+
+        navigation.navigate("SignIn");
       }
+    } catch (error: any) {
+      console.error("Registration Error:", error.message);
+      Alert.alert(
+        "Registration Failed",
+        error.response?.data?.message || "Something went wrong. Please try again."
+      );
     }
   };
 
@@ -94,7 +102,12 @@ const SignUp: React.FC<any> = ({ navigation }) => {
               <TextInput
                 placeholder="John Doe"
                 value={name}
-                onChangeText={setName}
+                onChangeText={(text) => {
+                  setName(text);
+                  if (errors.name) {
+                    setErrors((prevErrors) => ({ ...prevErrors, name: undefined }));
+                  }
+                }}
                 onFocus={() => setFocusedInput("name")}
                 onBlur={() => setFocusedInput(null)}
                 style={[
@@ -103,6 +116,7 @@ const SignUp: React.FC<any> = ({ navigation }) => {
                 ]}
                 placeholderTextColor="#B0B0B0"
               />
+              {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
             </View>
 
             <View style={styles.fields}>
@@ -110,7 +124,12 @@ const SignUp: React.FC<any> = ({ navigation }) => {
               <TextInput
                 placeholder="example@gmail.com"
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={(text) => {
+                  setEmail(text);
+                  if (errors.email) {
+                    setErrors((prevErrors) => ({ ...prevErrors, email: undefined }));
+                  }
+                }}
                 onFocus={() => setFocusedInput("email")}
                 onBlur={() => setFocusedInput(null)}
                 style={[
@@ -119,6 +138,7 @@ const SignUp: React.FC<any> = ({ navigation }) => {
                 ]}
                 placeholderTextColor="#B0B0B0"
               />
+              {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
             </View>
 
             <View>
@@ -126,7 +146,12 @@ const SignUp: React.FC<any> = ({ navigation }) => {
               <TextInput
                 placeholder="******"
                 value={password}
-                onChangeText={setPassword}
+                onChangeText={(text) => {
+                  setPassword(text);
+                  if (errors.password) {
+                    setErrors((prevErrors) => ({ ...prevErrors, password: undefined }));
+                  }
+                }}
                 secureTextEntry
                 onFocus={() => setFocusedInput("password")}
                 onBlur={() => setFocusedInput(null)}
@@ -136,6 +161,7 @@ const SignUp: React.FC<any> = ({ navigation }) => {
                 ]}
                 placeholderTextColor="#B0B0B0"
               />
+              {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
             </View>
           </View>
 
@@ -218,6 +244,11 @@ const styles = StyleSheet.create({
   },
   inputFocused: {
     borderColor: "#000000",
+  },
+  errorText: {
+    color: "red",
+    fontSize: 12,
+    marginTop: 5,
   },
   termsContainer: {
     marginVertical: 20,
